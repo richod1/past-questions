@@ -20,40 +20,61 @@ mongoose.connect().then(()=>{
     console.log("Database connected!!")
 }).catch(err=>console.log(err,"database failed to connect!"))
 
+
+// mong model
+const pdfSchema = new mongoose.Schema({
+    name: String,
+    pdf: Buffer,
+  });
+  
+  const PdfModel = mongoose.model('Pdf', pdfSchema);
+
+
 const storage=multer.memoryStorage()
 const upload=multer({storage:storage})
 
 app.post("/upload",upload.array('pdfs',100),async(req,res)=>{
     const files=req.files
 
+    if(!files|| files.length < 0){
+        res.status(401).json({err:"No file uploaded"})
+    }
+
     try{
-        const database=mongoose.database("zerity")
-        const collections=database.collections('pdfs')
-        const insertResult=await Promise.all(
-            files.map(async(file)=>{
-                const {originalname,buffer}=file
-                const readablePdfStream=new Readable();
-                readablePdfStream.push(buffer);
-                readablePdfStream.push(null);
+        const insertPdf=await files.map(async(file)=>{
+            const readablePdfStream=new Readable();
+            readablePdfStream.push(file.buffer)
+            readablePdfStream.push(null)
 
-                return collections.insertOne({
-                    name:originalname,
-                    pdf:readablePdfStream
-                })
-
+            const pdfDoc=new PdfModel({
+                name:file.originalname,
+                pdf:file.buffer
             })
-        )
 
-        // inserting ids
-        const insertedIds=insertResult.map((result)=>result.insertedId)
+            await pdfDoc.save();
 
-        res.status(201).json({success:true,fileIds:insertedIds})
+            return pdfDoc._id;
+
+        })
+
+        const insertedIds = await Promise.all(insertPdf);
+        res.json({ success: true, fileIds: insertedIds });
 
     }catch(err){
         res.status(500).json({err:"upload failed"})
 
     }
     
+})
+
+// download route endpoint
+app.get("download/:fileId",async(req,res)=>{
+    const fileId=req.params.fileId
+    try{
+
+    }catch(err){
+
+    }
 })
 
 
