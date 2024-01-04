@@ -25,9 +25,8 @@ mongoose.connect().then(()=>{
 const pdfSchema = new mongoose.Schema({
     name: String,
     pdf: Buffer,
-  });
-  
-  const PdfModel = mongoose.model('Pdf', pdfSchema);
+});
+const PdfModel = mongoose.model('Pdf', pdfSchema);
 
 
 const storage=multer.memoryStorage()
@@ -70,10 +69,19 @@ app.post("/upload",upload.array('pdfs',100),async(req,res)=>{
 // download route endpoint
 app.get("download/:fileId",async(req,res)=>{
     const fileId=req.params.fileId
-    try{
+    try {
+        const pdfDoc = await PdfModel.findById(fileId);
+    
+        if (!pdfDoc) {
+        return res.status(404).json({ error: 'PDF not found.' });
+        }
+    
+        res.setHeader('Content-Type', 'application/pdf');
+        res.send(pdfDoc.pdf);
 
     }catch(err){
-
+        console.log(err,"faild to download file")
+        res.status(500).json({err:"something went wrong at download route"})
     }
 })
 
